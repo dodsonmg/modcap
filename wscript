@@ -41,20 +41,30 @@ def options(ctx):
 def configure(ctx):
     print("Configuring modcap @", ctx.path.abspath())
 
-    if ctx.options.target == 'freertos':
-        if ctx.options.endpoint != 'server':
-            ctx.fatal('Only Modbus servers are supported for FreeRTOS')
-    elif ctx.options.target == 'linux':
-        if ctx.options.endpoint != 'client':
-            ctx.fatal('Only Modbus clients are supported for Linux')
-    else:
-        ctx.fatal('Unsupported target (only freertos and linux are supported)')
-
     ctx.load('compiler_c');
 
     # ENV - Save options for build stage
-    ctx.env.TARGET = ctx.options.target
-    ctx.env.ENDPOINT = ctx.options.endpoint
+    try:
+        ctx.env.TARGET = ctx.options.target
+    except:
+        ctx.env.TARGET = 'freertos'
+
+    # If this wscript is being consumed by a larger project, options() is never called,
+    # so we need to set suitable defaults, since ctx.options.target/endpoint will
+    # cause an exception.
+    try:
+        ctx.env.ENDPOINT = ctx.options.endpoint
+    except:
+        ctx.env.ENDPOINT = 'server'
+
+    if ctx.env.TARGET == 'freertos':
+        if ctx.env.ENDPOINT != 'server':
+            ctx.fatal('Only Modbus servers are supported for FreeRTOS')
+    elif ctx.env.TARGET == 'linux':
+        if ctx.env.ENDPOINT != 'client':
+            ctx.fatal('Only Modbus clients are supported for Linux')
+    else:
+        ctx.fatal('Unsupported target (only freertos and linux are supported)')
 
     ctx.env.append_value('INCLUDES', [
         ctx.path.abspath(),

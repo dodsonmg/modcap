@@ -408,7 +408,11 @@ static int send_network_caps(modbus_t *ctx, int function, uint16_t addr, int nb)
     {
         /* inspect the Macaroon */
         int buf_sz = macaroon_inspect_size_hint(temp_macaroon);
+#if defined(__freertos__)
         char *buf = (char *)pvPortMalloc(buf_sz * sizeof(unsigned char));
+#else
+        char *buf = (char *)malloc(buf_sz * sizeof(unsigned char));
+#endif
         macaroon_inspect(temp_macaroon, buf, buf_sz, &err);
         if (err != MACAROON_SUCCESS)
         {
@@ -903,7 +907,11 @@ static int process_network_caps(modbus_t *ctx, uint8_t *tab_string, int function
             address_as_caveat = 1;
         }
 
+#if defined(__freertos__)
         vPortFree(fpcs[i]);
+#else
+        free(fpcs[i]);
+#endif
     }
 
 #if defined(__freertos__)

@@ -71,33 +71,22 @@ int main(int argc, char *argv[])
     int success = FALSE;
     int old_slave;
 
+    use_backend = TCP;
+
     if (argc > 1) {
-        if (strcmp(argv[1], "tcp") == 0) {
-            use_backend = TCP;
-        } else if (strcmp(argv[1], "tcppi") == 0) {
-            use_backend = TCP_PI;
-        } else if (strcmp(argv[1], "rtu") == 0) {
-            use_backend = RTU;
+        if (strcmp(argv[1], "qemu") == 0) {
+            ctx = modbus_new_tcp("127.0.0.1", 1502);
+        } else if (strcmp(argv[1], "fett") == 0) {
+            ctx = modbus_new_tcp("10.0.2.15", 502);
         } else {
-            printf("Usage:\n  %s [tcp|tcppi|rtu] - Modbus client for unit testing\n\n", argv[0]);
+            printf("Usage:\n  %s [qemu|fett] - Modbus client for unit testing\n\n", argv[0]);
             exit(1);
         }
     } else {
         /* By default */
-        use_backend = TCP;
+        ctx = modbus_new_tcp("127.0.0.1", 1502);
     }
 
-    if (use_backend == TCP) {
-#if defined(PLATFORM_FETT)
-        ctx = modbus_new_tcp("10.0.2.15", 502);
-#else
-        ctx = modbus_new_tcp("127.0.0.1", 1502);
-#endif
-    } else if (use_backend == TCP_PI) {
-        ctx = modbus_new_tcp_pi("::1", "1502");
-    } else {
-        ctx = modbus_new_rtu("/dev/ttyUSB1", 115200, 'N', 8, 1);
-    }
     if (ctx == NULL) {
         fprintf(stderr, "Unable to allocate libmodbus context\n");
         return -1;
@@ -106,10 +95,6 @@ int main(int argc, char *argv[])
     modbus_set_error_recovery(ctx,
                               MODBUS_ERROR_RECOVERY_LINK |
                               MODBUS_ERROR_RECOVERY_PROTOCOL);
-
-    if (use_backend == RTU) {
-        modbus_set_slave(ctx, SERVER_ID);
-    }
 
     modbus_get_response_timeout(ctx, &old_response_to_sec, &old_response_to_usec);
     if (modbus_connect(ctx) == -1) {

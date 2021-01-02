@@ -57,6 +57,7 @@ def configure(ctx):
     except:
         ctx.env.ENDPOINT = 'server'
 
+    # Check for a supported target/endpoint combination
     if ctx.env.TARGET == 'freertos':
         if ctx.env.ENDPOINT != 'server':
             ctx.fatal('Only Modbus servers are supported for FreeRTOS')
@@ -77,6 +78,7 @@ def configure(ctx):
         ctx.path.abspath() + '/libmodbus_network_caps/include/'
     ])
 
+    # Additional library dependencies if we're targeting freertos
     if ctx.env.TARGET == 'freertos':
         ctx.env.append_value('LIB_DEPS', ['freertos_tcpip', 'virtio'])
 

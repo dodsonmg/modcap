@@ -25,6 +25,7 @@ enum {
     RTU
 };
 
+int test_body(void);
 int test_server(modbus_t *ctx, int use_backend);
 int send_crafted_request(modbus_t *ctx, int function,
                          uint8_t *req, int req_size,
@@ -34,11 +35,11 @@ int equal_dword(uint16_t *tab_reg, const uint32_t value);
 int convert_string_req(const char *req_string, uint8_t *req);
 
 #define BUG_REPORT(_cond, _format, _args ...) \
-    printf("\nLine %d: assertion error for '%s': " _format "\n", __LINE__, # _cond, ## _args)
+    printf("\r\nLine %d: assertion error for '%s': " _format "\r\n", __LINE__, # _cond, ## _args)
 
 #define ASSERT_TRUE(_cond, _format, __args...) {  \
     if (_cond) {                                  \
-        printf("OK\n");                           \
+        printf("OK\r\n");                           \
     } else {                                      \
         BUG_REPORT(_cond, _format, ## __args);    \
         goto close;                               \
@@ -49,29 +50,20 @@ int equal_dword(uint16_t *tab_reg, const uint32_t value) {
     return ((tab_reg[0] == (value >> 16)) && (tab_reg[1] == (value & 0xFFFF)));
 }
 
+static uint8_t *tab_rp_bits = NULL;
+static uint8_t *tab_rp_string = NULL;
+static uint16_t *tab_rp_registers = NULL;
+static modbus_t *ctx = NULL;
+static int nb_points;
+static int nb_chars;
+static uint32_t response_to_sec;
+static uint32_t response_to_usec;
+static int success = FALSE;
+
 int main(int argc, char *argv[])
 {
-    const int NB_REPORT_SLAVE_ID = 10;
-    uint8_t *tab_rp_bits = NULL;
-    uint8_t *tab_rp_string = NULL;
-    uint16_t *tab_rp_registers = NULL;
-    uint16_t *tab_rp_registers_bad = NULL;
-    modbus_t *ctx = NULL;
-    uint8_t value;
-    int nb_points;
     int rc;
-    float real;
-    uint32_t old_response_to_sec;
-    uint32_t old_response_to_usec;
-    uint32_t new_response_to_sec;
-    uint32_t new_response_to_usec;
-    uint32_t old_byte_to_sec;
-    uint32_t old_byte_to_usec;
-    int use_backend;
-    int success = FALSE;
-    int old_slave;
-
-    use_backend = TCP;
+    int num_iters;
 
     if (argc > 1) {
         if (strcmp(argv[1], "qemu") == 0) {
@@ -79,7 +71,7 @@ int main(int argc, char *argv[])
         } else if (strcmp(argv[1], "fett") == 0) {
             ctx = modbus_new_tcp("10.0.2.15", 502);
         } else {
-            printf("Usage:\n  %s [qemu|fett] - Modbus client for unit testing\n\n", argv[0]);
+            printf("Usage: %s [qemu|fett] - Modbus client for unit testing\r\n", argv[0]);
             exit(1);
         }
     } else {
@@ -87,8 +79,14 @@ int main(int argc, char *argv[])
         ctx = modbus_new_tcp("127.0.0.1", 1502);
     }
 
+    if (argc == 3) {
+        num_iters = atoi(argv[2]);
+    } else {
+        num_iters = 1;
+    }
+
     if (ctx == NULL) {
-        fprintf(stderr, "Unable to allocate libmodbus context\n");
+        fprintf(stderr, "Unable to allocate libmodbus context\r\n");
         return -1;
     }
     modbus_set_debug(ctx, TRUE);
@@ -96,9 +94,9 @@ int main(int argc, char *argv[])
                               MODBUS_ERROR_RECOVERY_LINK |
                               MODBUS_ERROR_RECOVERY_PROTOCOL);
 
-    modbus_get_response_timeout(ctx, &old_response_to_sec, &old_response_to_usec);
+    modbus_get_response_timeout(ctx, &response_to_sec, &response_to_usec);
     if (modbus_connect(ctx) == -1) {
-        fprintf(stderr, "Connection failed: %s\n", modbus_strerror(errno));
+        fprintf(stderr, "Connection failed: %s\r\n", modbus_strerror(errno));
         modbus_free(ctx);
         return -1;
     }
@@ -116,21 +114,13 @@ int main(int argc, char *argv[])
 
     /* Allocate and initialize the memory to store the string */
     tab_rp_string = (uint8_t *)malloc(MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
-    int nb_chars = convert_string_req((const char *)TEST_STRING, tab_rp_string);
+    nb_chars = convert_string_req((const char *)TEST_STRING, tab_rp_string);
 
 #if defined(MICROBENCHMARK)
     /* If we're benchmarking, the server will be iterating over the request,
      * so we bump up the time the client is willing to wait for a response */
     rc = modbus_set_response_timeout(ctx, 1000, 0);
 #endif
-
-    printf("----------\r\n");
-    printf("BEGIN_TEST\r\n");
-    printf("----------\r\n");
-
-    /**************
-     * STRING TESTS
-     **************/
 
 #if defined(MODBUS_NETWORK_CAPS)
     /* when using macaroons, the server will initialise a macaroon and store
@@ -139,279 +129,29 @@ int main(int argc, char *argv[])
      *
      * this is basically a TOFU operation: we'll deserialise it and store
      * it as the client's initial macaroon */
-    printf("\nREAD_STRING\r\n");
+    printf("\r\nREAD_STRING\r\n");
     memset(tab_rp_string, 0, MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
     rc = modbus_read_string(ctx, tab_rp_string);
     ASSERT_TRUE(rc != -1, "");
 
-    printf("\nINITIALISE_CLIENT_NETWORK_CAPS\r\n");
+    printf("\r\nINITIALISE_CLIENT_NETWORK_CAPS\r\n");
     rc = initialise_client_network_caps(ctx, (char *)tab_rp_string, rc);
     ASSERT_TRUE(rc != -1, "");
 #endif
 
-    /* WRITE_STRING */
-    printf("\nWRITE_STRING\r\n");
-    rc = modbus_write_string(ctx, tab_rp_string, nb_chars);
-    ASSERT_TRUE(rc != -1, "");
+    printf("----------\r\n");
+    printf("BEGIN_TEST\r\n");
+    printf("----------\r\n");
 
-    /* READ_STRING */
-    printf("\nREAD_STRING\r\n");
-    memset(tab_rp_string, 0, MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
-    rc = modbus_read_string(ctx, tab_rp_string);
-    ASSERT_TRUE(rc != -1, "");
-
-    /************
-     * COIL TESTS
-     ***********/
-
-    /* WRITE_SINGLE_COIL */
-    printf("\nWRITE_SINGLE_COIL\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_write_bit_network_caps(ctx, UT_BITS_ADDRESS, ON);
-#else
-    rc = modbus_write_bit(ctx, UT_BITS_ADDRESS, ON);
-#endif
-    ASSERT_TRUE(rc == 1, "");
-
-    /* READ_SINGLE_COIL */
-    printf("\nREAD_SINGLE_COIL\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_read_bits_network_caps(ctx, UT_BITS_ADDRESS, 1, tab_rp_bits);
-#else
-    rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, 1, tab_rp_bits);
-#endif
-	ASSERT_TRUE(rc == 1, "FAILED (nb points %d)\n", rc);
-    ASSERT_TRUE(tab_rp_bits[0] == ON, "FAILED (%0X != %0X)\n",
-                tab_rp_bits[0], ON);
-
-    /* WRITE_MULTIPLE_COILS */
-    printf("\nWRITE_MULTIPLE_COILS\r\n");
-    {
-        uint8_t tab_value[UT_BITS_NB];
-        modbus_set_bits_from_bytes(tab_value, 0, UT_BITS_NB, UT_BITS_TAB);
-
-#if defined(MODBUS_NETWORK_CAPS)
-        rc = modbus_write_bits_network_caps(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_value);
-#else
-        rc = modbus_write_bits(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_value);
-#endif
+    /* Execute a series of requests to the Modbus server
+     * and validate the replies. */
+    for(int i = 0; i < num_iters; ++i) {
+        printf("***************************\r\n");
+        printf("*** CLIENT ITERATION %d ***\r\n", i);
+        printf("***************************\r\n");
+        rc = test_body();
+        ASSERT_TRUE(rc != -1, "");
     }
-    ASSERT_TRUE(rc == UT_BITS_NB, "");
-
-    /* READ_MULTIPLE_COILS */
-    printf("\nREAD_MULTIPLE_COILS\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_read_bits_network_caps(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits);
-#else
-    rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits);
-#endif
-	ASSERT_TRUE(rc == UT_BITS_NB, "FAILED (nb points %d)\n", rc);
-
-	{
-		int i = 0;
-		nb_points = UT_BITS_NB;
-		while (nb_points > 0) {
-			int nb_bits = (nb_points > 8) ? 8 : nb_points;
-
-			value = modbus_get_byte_from_bits(tab_rp_bits, i*8, nb_bits);
-			ASSERT_TRUE(value == UT_BITS_TAB[i], "FAILED (%0X != %0X)\n",
-					value, UT_BITS_TAB[i]);
-
-			nb_points -= nb_bits;
-			i++;
-		}
-	}
-
-    /**********************
-     * DISCRETE INPUT TESTS
-     *********************/
-
-    /* READ_INPUT_BITS */
-    printf("\nREAD_INPUT_BITS\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_read_input_bits_network_caps(ctx, UT_INPUT_BITS_ADDRESS, UT_INPUT_BITS_NB, tab_rp_bits);
-#else
-    rc = modbus_read_input_bits(ctx, UT_INPUT_BITS_ADDRESS, UT_INPUT_BITS_NB, tab_rp_bits);
-#endif
-    ASSERT_TRUE(rc == UT_INPUT_BITS_NB, "FAILED (nb points %d)\n", rc);
-
-    {
-        /* further checks on the returned discrete inputs */
-        int i = 0;
-        uint8_t value;
-        nb_points = UT_INPUT_BITS_NB;
-        while (nb_points > 0) {
-            int nb_bits = (nb_points > 8) ? 8 : nb_points;
-            value = modbus_get_byte_from_bits(tab_rp_bits, i*8, nb_bits);
-			ASSERT_TRUE(value == UT_INPUT_BITS_TAB[i], "FAILED (%0X != %0X)\n",
-					value, UT_INPUT_BITS_TAB[i]);
-
-            nb_points -= nb_bits;
-            i++;
-        }
-    }
-
-    /************************
-     * HOLDING REGISTER TESTS
-     ***********************/
-
-    /* WRITE_SINGLE_REGISTER */
-    printf("\nWRITE_SINGLE_REGISTER\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_write_register_network_caps(ctx, UT_REGISTERS_ADDRESS, 0x1234);
-#else
-    rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x1234);
-#endif
-    ASSERT_TRUE(rc == 1, "");
-
-    /* READ_SINGLE_REGISTER */
-    printf("\nREAD_SINGLE_REGISTER\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
-#else
-    rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
-#endif
-    ASSERT_TRUE(rc == 1, "FAILED (nb points %d)\n", rc);
-    ASSERT_TRUE(tab_rp_registers[0] == 0x1234, "FAILED (%0X != %0X)\n",
-                tab_rp_registers[0], 0x1234);
-
-    /* WRITE_MULTIPLE_REGISTERS */
-    printf("\nWRITE_MULTIPLE_REGISTERS\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_write_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, UT_REGISTERS_TAB);
-#else
-    rc = modbus_write_registers(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, UT_REGISTERS_TAB);
-#endif
-    ASSERT_TRUE(rc == UT_REGISTERS_NB, "");
-
-    /* READ_MULTIPLE_REGISTERS */
-    printf("\nREAD_MULTIPLE_REGISTERS\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, tab_rp_registers);
-#else
-    rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, tab_rp_registers);
-#endif
-    ASSERT_TRUE(rc == UT_REGISTERS_NB, "FAILED (nb points %d)\n", rc);
-
-    for (int i=0; i < UT_REGISTERS_NB; i++) {
-        ASSERT_TRUE(tab_rp_registers[i] == UT_REGISTERS_TAB[i],
-                    "FAILED (%0X != %0X)\n",
-                    tab_rp_registers[i], UT_REGISTERS_TAB[i]);
-    }
-
-	/* Attempt to read 0 registers.  Expected to fail. */
-#if !defined(MICROBENCHMARK)
-#if defined(MODBUS_NETWORK_CAPS)
-	rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS,
-			0, tab_rp_registers);
-#else
-	rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS,
-			0, tab_rp_registers);
-#endif /* defined(MODBUS_NETWORK_CAPS) */
-    ASSERT_TRUE(rc == -1, "FAILED (nb_points %d)\n", rc);
-#endif /* !defined(MICROBENCHMARK) */
-
-    /* WRITE_AND_READ_REGISTERS */
-    printf("\nWRITE_AND_READ_REGISTERS\r\n");
-
-    nb_points = (UT_REGISTERS_NB > UT_INPUT_REGISTERS_NB) ? UT_REGISTERS_NB : UT_INPUT_REGISTERS_NB;
-    memset(tab_rp_registers, 0, nb_points * sizeof(uint16_t));
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_write_and_read_registers_network_caps(ctx,
-            UT_REGISTERS_ADDRESS + 1,
-            UT_REGISTERS_NB - 1,
-            tab_rp_registers,
-            UT_REGISTERS_ADDRESS,
-            UT_REGISTERS_NB,
-            tab_rp_registers);
-#else
-    rc = modbus_write_and_read_registers(ctx,
-            UT_REGISTERS_ADDRESS + 1,
-            UT_REGISTERS_NB - 1,
-            tab_rp_registers,
-            UT_REGISTERS_ADDRESS,
-            UT_REGISTERS_NB,
-            tab_rp_registers);
-#endif
-    ASSERT_TRUE(rc == UT_REGISTERS_NB, "FAILED (nb points %d != %d)\n",
-                rc, UT_REGISTERS_NB);
-
-    ASSERT_TRUE(tab_rp_registers[0] == UT_REGISTERS_TAB[0],
-                "FAILED (%0X != %0X)\n",
-                tab_rp_registers[0], UT_REGISTERS_TAB[0]);
-
-    for (int i=1; i < UT_REGISTERS_NB; i++) {
-        ASSERT_TRUE(tab_rp_registers[i] == 0, "FAILED (%0X != %0X)\n",
-                    tab_rp_registers[i], 0);
-    }
-
-    /**********************
-     * INPUT REGISTER TESTS
-     *********************/
-
-    /* READ_INPUT_REGISTERS */
-    printf("\nREAD_INPUT_REGISTERS\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_read_input_registers_network_caps(ctx, UT_INPUT_REGISTERS_ADDRESS,
-            UT_INPUT_REGISTERS_NB, tab_rp_registers);
-#else
-    rc = modbus_read_input_registers(ctx, UT_INPUT_REGISTERS_ADDRESS,
-            UT_INPUT_REGISTERS_NB, tab_rp_registers);
-#endif
-    ASSERT_TRUE(rc == UT_INPUT_REGISTERS_NB, "FAILED (nb points %d)\n", rc);
-
-    for (int i=0; i < UT_INPUT_REGISTERS_NB; i++) {
-        ASSERT_TRUE(tab_rp_registers[i] == UT_INPUT_REGISTERS_TAB[i],
-                    "FAILED (%0X != %0X)\n",
-                    tab_rp_registers[i], UT_INPUT_REGISTERS_TAB[i]);
-    }
-
-    /*****************************
-     * HOLDING REGISTER MASK TESTS
-     ****************************/
-
-    /* WRITE_SINGLE_REGISTER */
-    printf("\nWRITE_SINGLE_REGISTER\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_write_register_network_caps(ctx, UT_REGISTERS_ADDRESS, 0x12);
-#else
-    rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x12);
-#endif
-    ASSERT_TRUE(rc == 1, "");
-
-    /* MASK_WRITE_SINGLE_REGISTER */
-    printf("\nMASK_WRITE_SINGLE_REGISTER\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_mask_write_register_network_caps(ctx, UT_REGISTERS_ADDRESS, 0xF2, 0x25);
-#else
-    rc = modbus_mask_write_register(ctx, UT_REGISTERS_ADDRESS, 0xF2, 0x25);
-#endif
-    ASSERT_TRUE(rc != -1, "FAILED (%x == -1)\n", rc);
-
-    /* READ_SINGLE_REGISTER */
-    printf("\nREAD_SINGLE_REGISTER\r\n");
-
-#if defined(MODBUS_NETWORK_CAPS)
-    rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
-#else
-    rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
-#endif
-    ASSERT_TRUE(rc == 1, "");
-    ASSERT_TRUE(tab_rp_registers[0] == 0x17,
-                "FAILED (%0X != %0X)\n",
-                tab_rp_registers[0], 0x17);
 
     printf("--------\r\n");
     printf("END_TEST\r\n");
@@ -509,7 +249,7 @@ int test_server(modbus_t *ctx, int use_backend)
         backend_offset = 7;
     }
 
-    printf("\nTEST RAW REQUESTS:\n");
+    printf("\r\nTEST RAW REQUESTS:\r\n");
 
     uint32_t old_response_to_sec;
     uint32_t old_response_to_usec;
@@ -524,11 +264,11 @@ int test_server(modbus_t *ctx, int use_backend)
 
     req_length = modbus_send_raw_request(ctx, read_raw_req, READ_RAW_REQ_LEN);
     printf("* modbus_send_raw_request: ");
-    ASSERT_TRUE(req_length == (backend_length + 5), "FAILED (%d)\n", req_length);
+    ASSERT_TRUE(req_length == (backend_length + 5), "FAILED (%d)\r\n", req_length);
 
     printf("* modbus_receive_confirmation: ");
     rc = modbus_receive_confirmation(ctx, rsp);
-    ASSERT_TRUE(rc == (backend_length + 12), "FAILED (%d)\n", rc);
+    ASSERT_TRUE(rc == (backend_length + 12), "FAILED (%d)\r\n", rc);
 
     /* Try to read more values than a response could hold for all data
        types. */
@@ -671,4 +411,287 @@ int convert_string_req(const char *req_string, uint8_t *req)
     req[(strlen(req_string)) / 4] = '\0';
 
     return (strlen(req_string)) / 4 + 1;
+}
+
+/**
+ * Execute a series of requests to the Modbus server
+ * and validate the replies.
+ **/
+int test_body(void)
+{
+    int rc;
+
+    /**************
+     * STRING TESTS
+     **************/
+
+    /* WRITE_STRING */
+    printf("\r\nWRITE_STRING\r\n");
+    rc = modbus_write_string(ctx, tab_rp_string, nb_chars);
+    ASSERT_TRUE(rc != -1, "");
+
+    /* READ_STRING */
+    printf("\r\nREAD_STRING\r\n");
+    memset(tab_rp_string, 0, MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
+    rc = modbus_read_string(ctx, tab_rp_string);
+    ASSERT_TRUE(rc != -1, "");
+
+    /************
+     * COIL TESTS
+     ***********/
+
+    /* WRITE_SINGLE_COIL */
+    printf("\r\nWRITE_SINGLE_COIL\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_write_bit_network_caps(ctx, UT_BITS_ADDRESS, ON);
+#else
+    rc = modbus_write_bit(ctx, UT_BITS_ADDRESS, ON);
+#endif
+    ASSERT_TRUE(rc == 1, "");
+
+    /* READ_SINGLE_COIL */
+    printf("\r\nREAD_SINGLE_COIL\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_bits_network_caps(ctx, UT_BITS_ADDRESS, 1, tab_rp_bits);
+#else
+    rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, 1, tab_rp_bits);
+#endif
+	ASSERT_TRUE(rc == 1, "FAILED (nb points %d)\r\n", rc);
+    ASSERT_TRUE(tab_rp_bits[0] == ON, "FAILED (%0X != %0X)\r\n",
+                tab_rp_bits[0], ON);
+
+    /* WRITE_MULTIPLE_COILS */
+    printf("\r\nWRITE_MULTIPLE_COILS\r\n");
+    {
+        uint8_t tab_value[UT_BITS_NB];
+        modbus_set_bits_from_bytes(tab_value, 0, UT_BITS_NB, UT_BITS_TAB);
+
+#if defined(MODBUS_NETWORK_CAPS)
+        rc = modbus_write_bits_network_caps(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_value);
+#else
+        rc = modbus_write_bits(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_value);
+#endif
+    }
+    ASSERT_TRUE(rc == UT_BITS_NB, "");
+
+    /* READ_MULTIPLE_COILS */
+    printf("\r\nREAD_MULTIPLE_COILS\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_bits_network_caps(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits);
+#else
+    rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits);
+#endif
+	ASSERT_TRUE(rc == UT_BITS_NB, "FAILED (nb points %d)\r\n", rc);
+
+	{
+		int i = 0;
+        uint8_t value;
+		nb_points = UT_BITS_NB;
+		while (nb_points > 0) {
+			int nb_bits = (nb_points > 8) ? 8 : nb_points;
+
+			value = modbus_get_byte_from_bits(tab_rp_bits, i*8, nb_bits);
+			ASSERT_TRUE(value == UT_BITS_TAB[i], "FAILED (%0X != %0X)\r\n",
+					value, UT_BITS_TAB[i]);
+
+			nb_points -= nb_bits;
+			i++;
+		}
+	}
+
+    /**********************
+     * DISCRETE INPUT TESTS
+     *********************/
+
+    /* READ_INPUT_BITS */
+    printf("\r\nREAD_INPUT_BITS\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_input_bits_network_caps(ctx, UT_INPUT_BITS_ADDRESS, UT_INPUT_BITS_NB, tab_rp_bits);
+#else
+    rc = modbus_read_input_bits(ctx, UT_INPUT_BITS_ADDRESS, UT_INPUT_BITS_NB, tab_rp_bits);
+#endif
+    ASSERT_TRUE(rc == UT_INPUT_BITS_NB, "FAILED (nb points %d)\r\n", rc);
+
+    {
+        /* further checks on the returned discrete inputs */
+        int i = 0;
+        uint8_t value;
+        nb_points = UT_INPUT_BITS_NB;
+        while (nb_points > 0) {
+            int nb_bits = (nb_points > 8) ? 8 : nb_points;
+            value = modbus_get_byte_from_bits(tab_rp_bits, i*8, nb_bits);
+			ASSERT_TRUE(value == UT_INPUT_BITS_TAB[i], "FAILED (%0X != %0X)\r\n",
+					value, UT_INPUT_BITS_TAB[i]);
+
+            nb_points -= nb_bits;
+            i++;
+        }
+    }
+
+    /************************
+     * HOLDING REGISTER TESTS
+     ***********************/
+
+    /* WRITE_SINGLE_REGISTER */
+    printf("\r\nWRITE_SINGLE_REGISTER\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_write_register_network_caps(ctx, UT_REGISTERS_ADDRESS, 0x1234);
+#else
+    rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x1234);
+#endif
+    ASSERT_TRUE(rc == 1, "");
+
+    /* READ_SINGLE_REGISTER */
+    printf("\r\nREAD_SINGLE_REGISTER\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
+#else
+    rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
+#endif
+    ASSERT_TRUE(rc == 1, "FAILED (nb points %d)\r\n", rc);
+    ASSERT_TRUE(tab_rp_registers[0] == 0x1234, "FAILED (%0X != %0X)\r\n",
+                tab_rp_registers[0], 0x1234);
+
+    /* WRITE_MULTIPLE_REGISTERS */
+    printf("\r\nWRITE_MULTIPLE_REGISTERS\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_write_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, UT_REGISTERS_TAB);
+#else
+    rc = modbus_write_registers(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, UT_REGISTERS_TAB);
+#endif
+    ASSERT_TRUE(rc == UT_REGISTERS_NB, "");
+
+    /* READ_MULTIPLE_REGISTERS */
+    printf("\r\nREAD_MULTIPLE_REGISTERS\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, tab_rp_registers);
+#else
+    rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, tab_rp_registers);
+#endif
+    ASSERT_TRUE(rc == UT_REGISTERS_NB, "FAILED (nb points %d)\r\n", rc);
+
+    for (int i=0; i < UT_REGISTERS_NB; i++) {
+        ASSERT_TRUE(tab_rp_registers[i] == UT_REGISTERS_TAB[i],
+                    "FAILED (%0X != %0X)\r\n",
+                    tab_rp_registers[i], UT_REGISTERS_TAB[i]);
+    }
+
+	/* Attempt to read 0 registers.  Expected to fail. */
+#if !defined(MICROBENCHMARK)
+#if defined(MODBUS_NETWORK_CAPS)
+	rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS,
+			0, tab_rp_registers);
+#else
+	rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS,
+			0, tab_rp_registers);
+#endif /* defined(MODBUS_NETWORK_CAPS) */
+    ASSERT_TRUE(rc == -1, "FAILED (nb_points %d)\r\n", rc);
+#endif /* !defined(MICROBENCHMARK) */
+
+    /* WRITE_AND_READ_REGISTERS */
+    printf("\r\nWRITE_AND_READ_REGISTERS\r\n");
+
+    nb_points = (UT_REGISTERS_NB > UT_INPUT_REGISTERS_NB) ? UT_REGISTERS_NB : UT_INPUT_REGISTERS_NB;
+    memset(tab_rp_registers, 0, nb_points * sizeof(uint16_t));
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_write_and_read_registers_network_caps(ctx,
+            UT_REGISTERS_ADDRESS + 1,
+            UT_REGISTERS_NB - 1,
+            tab_rp_registers,
+            UT_REGISTERS_ADDRESS,
+            UT_REGISTERS_NB,
+            tab_rp_registers);
+#else
+    rc = modbus_write_and_read_registers(ctx,
+            UT_REGISTERS_ADDRESS + 1,
+            UT_REGISTERS_NB - 1,
+            tab_rp_registers,
+            UT_REGISTERS_ADDRESS,
+            UT_REGISTERS_NB,
+            tab_rp_registers);
+#endif
+    ASSERT_TRUE(rc == UT_REGISTERS_NB, "FAILED (nb points %d != %d)\r\n",
+                rc, UT_REGISTERS_NB);
+
+    ASSERT_TRUE(tab_rp_registers[0] == UT_REGISTERS_TAB[0],
+                "FAILED (%0X != %0X)\r\n",
+                tab_rp_registers[0], UT_REGISTERS_TAB[0]);
+
+    for (int i=1; i < UT_REGISTERS_NB; i++) {
+        ASSERT_TRUE(tab_rp_registers[i] == 0, "FAILED (%0X != %0X)\r\n",
+                    tab_rp_registers[i], 0);
+    }
+
+    /**********************
+     * INPUT REGISTER TESTS
+     *********************/
+
+    /* READ_INPUT_REGISTERS */
+    printf("\r\nREAD_INPUT_REGISTERS\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_input_registers_network_caps(ctx, UT_INPUT_REGISTERS_ADDRESS,
+            UT_INPUT_REGISTERS_NB, tab_rp_registers);
+#else
+    rc = modbus_read_input_registers(ctx, UT_INPUT_REGISTERS_ADDRESS,
+            UT_INPUT_REGISTERS_NB, tab_rp_registers);
+#endif
+    ASSERT_TRUE(rc == UT_INPUT_REGISTERS_NB, "FAILED (nb points %d)\r\n", rc);
+
+    for (int i=0; i < UT_INPUT_REGISTERS_NB; i++) {
+        ASSERT_TRUE(tab_rp_registers[i] == UT_INPUT_REGISTERS_TAB[i],
+                    "FAILED (%0X != %0X)\r\n",
+                    tab_rp_registers[i], UT_INPUT_REGISTERS_TAB[i]);
+    }
+
+    /*****************************
+     * HOLDING REGISTER MASK TESTS
+     ****************************/
+
+    /* WRITE_SINGLE_REGISTER */
+    printf("\r\nWRITE_SINGLE_REGISTER\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_write_register_network_caps(ctx, UT_REGISTERS_ADDRESS, 0x12);
+#else
+    rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x12);
+#endif
+    ASSERT_TRUE(rc == 1, "");
+
+    /* MASK_WRITE_SINGLE_REGISTER */
+    printf("\r\nMASK_WRITE_SINGLE_REGISTER\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_mask_write_register_network_caps(ctx, UT_REGISTERS_ADDRESS, 0xF2, 0x25);
+#else
+    rc = modbus_mask_write_register(ctx, UT_REGISTERS_ADDRESS, 0xF2, 0x25);
+#endif
+    ASSERT_TRUE(rc != -1, "FAILED (%x == -1)\r\n", rc);
+
+    /* READ_SINGLE_REGISTER */
+    printf("\r\nREAD_SINGLE_REGISTER\r\n");
+
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
+#else
+    rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
+#endif
+    ASSERT_TRUE(rc == 1, "");
+    ASSERT_TRUE(tab_rp_registers[0] == 0x17,
+                "FAILED (%0X != %0X)\r\n",
+                tab_rp_registers[0], 0x17);
+
+    return 0;
+
+close:
+    return -1;
 }

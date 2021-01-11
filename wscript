@@ -75,7 +75,8 @@ def configure(ctx):
         ctx.path.abspath() + '/libmodbus/include/',
         ctx.path.abspath() + '/libmacaroons/include/',
         ctx.path.abspath() + '/libmodbus_object_caps/include/',
-        ctx.path.abspath() + '/libmodbus_network_caps/include/'
+        ctx.path.abspath() + '/libmodbus_network_caps/include/',
+        ctx.path.abspath() + '/modbus_benchmarks/include/',
     ])
 
     # Additional library dependencies if we're targeting freertos
@@ -90,6 +91,7 @@ def build(bld):
     LIBMODBUS_DIR = 'libmodbus/'
     LIBMODBUS_OBJECT_CAPS_DIR = 'libmodbus_object_caps/'
     LIBMODBUS_NETWORK_CAPS_DIR = 'libmodbus_network_caps/'
+    MODBUS_BENCHMARKS_DIR = 'modbus_benchmarks/'
 
     if bld.env.TARGET == 'linux' and bld.env.ENDPOINT == 'client':
         bld.stlib(features=['c'],
@@ -130,6 +132,11 @@ def build(bld):
                     "modbus"],
                   target="modbus_network_caps")
 
+        bld.stlib(features=['c'],
+                  source=[MODBUS_BENCHMARKS_DIR + 'src/microbenchmark.c'],
+                  use=["modbus"],
+                  target="modbus_benchmarks")
+
         # build a basic modbus client to test a modbus server
         bld.program(features=['c'],
                       source=[MODBUS_CLIENT_DIR + 'modbus_test_client.c'],
@@ -139,7 +146,10 @@ def build(bld):
         # build a modbus client to benchmark a modbus server
         bld.program(features=['c'],
                       source=[MODBUS_CLIENT_DIR + 'modbus_test_client.c'],
-                      use=['modbus'],
+                      use=[
+                        'modbus',
+                        'modbus_benchmarks',
+                        ],
                       defines=bld.env.DEFINES + ['MICROBENCHMARK=1'],
                       target='modbus_test_client_bench')
 
@@ -158,6 +168,7 @@ def build(bld):
                       source=[MODBUS_CLIENT_DIR + 'modbus_test_client.c'],
                       use=[
                         'modbus',
+                        'modbus_benchmarks',
                         'modbus_network_caps'
                         ],
                       defines=bld.env.DEFINES + [
@@ -221,3 +232,13 @@ def build(bld):
                       "macaroons"
                   ],
                   target="modbus_network_caps")
+
+        bld.stlib(features=['c'],
+                  source=[MODBUS_BENCHMARKS_DIR + 'src/microbenchmark.c'],
+                  use=[
+                      "modbus",
+                      "freertos_core",
+                      "freertos_bsp",
+                      "freertos_tcpip",
+                  ],
+                  target="modbus_benchmarks")

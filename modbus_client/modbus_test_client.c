@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 
         /* Get the timestamp difference in usec and store as
          * a benchmark sample. */
-        time_diff = 100000 * (tv_end.tv_sec - tv_start.tv_sec) +
+        time_diff = 1e6 * (tv_end.tv_sec - tv_start.tv_sec) +
             (tv_end.tv_usec - tv_start.tv_usec);
         xMicrobenchmarkSample(MAX_PROCESSING, "MODBUS_FC_ALL", time_diff, 1);
 #endif

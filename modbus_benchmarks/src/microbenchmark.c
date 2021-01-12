@@ -163,9 +163,13 @@ void vPrintMicrobenchmarkSamples( void )
         {
             print_string = spare_string;
         }
-        else
+        else if( pxPrintBuffer[ i ].xBenchmark == REQUEST_PROCESSING )
         {
             print_string = request_string;
+        }
+        else
+        {
+            print_string = max_string;
         }
 
         printf( "%s, %s, %u\n",

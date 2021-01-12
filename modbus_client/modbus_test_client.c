@@ -9,9 +9,15 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <sys/time.h>
+
 #include "modbus/modbus.h"
 
 #include "modbus_test_constants.h"
+
+#if defined(MICROBENCHMARK)
+#include "microbenchmark.h"
+#endif
 
 #if defined(MODBUS_NETWORK_CAPS)
 #include "modbus_network_caps.h"
@@ -64,6 +70,8 @@ int main(int argc, char *argv[])
 {
     int rc;
     int num_iters;
+    struct timeval tv_start, tv_end;
+    uint64_t time_diff;
 
     if (argc > 1) {
         if (strcmp(argv[1], "qemu") == 0) {
@@ -116,12 +124,6 @@ int main(int argc, char *argv[])
     tab_rp_string = (uint8_t *)malloc(MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
     nb_chars = convert_string_req((const char *)TEST_STRING, tab_rp_string);
 
-#if defined(MICROBENCHMARK)
-    /* If we're benchmarking, the server will be iterating over the request,
-     * so we bump up the time the client is willing to wait for a response */
-    rc = modbus_set_response_timeout(ctx, 1000, 0);
-#endif
-
 #if defined(MODBUS_NETWORK_CAPS)
     /* when using macaroons, the server will initialise a macaroon and store
      * it in mb_mapping->tab_string, so the client starts by reading that
@@ -143,19 +145,41 @@ int main(int argc, char *argv[])
     printf("BEGIN_TEST\r\n");
     printf("----------\r\n");
 
+
     /* Execute a series of requests to the Modbus server
      * and validate the replies. */
     for(int i = 0; i < num_iters; ++i) {
         printf("***************************\r\n");
         printf("*** CLIENT ITERATION %d ***\r\n", i);
         printf("***************************\r\n");
+
+#if defined(MICROBENCHMARK)
+        /* Get timestamp before executing test_body(). */
+        gettimeofday(&tv_start, NULL);
+#endif
+
         rc = test_body();
         ASSERT_TRUE(rc != -1, "");
+
+#if defined(MICROBENCHMARK)
+        /* Get timestamp after executing test_body(). */
+        gettimeofday(&tv_end, NULL);
+
+        /* Get the timestamp difference in usec and store as
+         * a benchmark sample. */
+        time_diff = 100000 * (tv_end.tv_sec - tv_start.tv_sec) +
+            (tv_end.tv_usec - tv_start.tv_usec);
+        xMicrobenchmarkSample(MAX_PROCESSING, "MODBUS_FC_ALL", time_diff, 1);
+#endif
     }
 
     printf("--------\r\n");
     printf("END_TEST\r\n");
     printf("--------\r\n");
+
+#if defined(MICROBENCHMARK)
+    vPrintMicrobenchmarkSamples();
+#endif
 
     success = TRUE;
 
@@ -584,7 +608,10 @@ int test_body(void)
                     tab_rp_registers[i], UT_REGISTERS_TAB[i]);
     }
 
-	/* Attempt to read 0 registers.  Expected to fail. */
+	/* Attempt to read 0 registers.  Expected to fail.
+     * We don't include expected failures in microbenchmarking,
+     * since the generally result in timeouts, which is both slow and
+     * not really helpful in any way. */
 #if !defined(MICROBENCHMARK)
 #if defined(MODBUS_NETWORK_CAPS)
 	rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS,

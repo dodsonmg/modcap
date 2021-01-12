@@ -39,11 +39,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <assert.h>
 
+#if defined(__freertos__)
 /* Kernel includes. */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
+#endif
 
 /* Modbus includes. */
 #include <modbus/modbus.h>
@@ -68,11 +71,14 @@ static size_t xPrintBufferSize = 0;
 static size_t xPrintBufferCount = 0;
 
 /*-----------------------------------------------------------*/
-
+#if defined(__freertos__)
 void xMicrobenchmarkSample( BenchmarkType_t xBenchmark, char *pcFunctionName,
         uint64_t ulTimeDiff, BaseType_t xToPrint )
+#else
+void xMicrobenchmarkSample( BenchmarkType_t xBenchmark, char *pcFunctionName,
+        uint64_t ulTimeDiff, uint8_t xToPrint )
+#endif
 {
-    BaseType_t xReturned;
     size_t xFunctionNameLen = strnlen(pcFunctionName, MODBUS_MAX_FUNCTION_NAME_LEN);
 
     /* initialise the buffer, if necessary */
@@ -82,9 +88,15 @@ void xMicrobenchmarkSample( BenchmarkType_t xBenchmark, char *pcFunctionName,
          * through each function 10 times. */
         xPrintBufferSize = MAX_FUNCTIONS * 10;
         xPrintBufferCount = 0;
+#if defined(__freertos__)
         pxPrintBuffer = ( BenchmarkSample_t * )pvPortMalloc(
                 xPrintBufferSize * sizeof( BenchmarkSample_t ) );
         configASSERT( pxPrintBuffer != NULL );
+#else
+        pxPrintBuffer = ( BenchmarkSample_t * )malloc(
+                xPrintBufferSize * sizeof( BenchmarkSample_t ) );
+        assert( pxPrintBuffer != NULL );
+#endif
     }
 
     if( xToPrint )
@@ -95,8 +107,13 @@ void xMicrobenchmarkSample( BenchmarkType_t xBenchmark, char *pcFunctionName,
         if( xPrintBufferCount == xPrintBufferSize)
         {
             /* Create the new allocation. */
+#if defined(__freertos__)
             BenchmarkSample_t *pxPrintBufferNew = ( BenchmarkSample_t * )pvPortMalloc(
                 ( xPrintBufferSize * 2 ) * sizeof( BenchmarkSample_t ) );
+#else
+            BenchmarkSample_t *pxPrintBufferNew = ( BenchmarkSample_t * )malloc(
+                ( xPrintBufferSize * 2 ) * sizeof( BenchmarkSample_t ) );
+#endif
 
             /* Copy in structures from the original allocation. */
             for( int i = 0; i < xPrintBufferCount; ++i )
@@ -105,14 +122,22 @@ void xMicrobenchmarkSample( BenchmarkType_t xBenchmark, char *pcFunctionName,
             }
 
             /* Free the original allocation. */
+#if defined(__freertos__)
             vPortFree( pxPrintBuffer );
+#else
+            free( pxPrintBuffer );
+#endif
 
             /* Reassign the pointer. */
             pxPrintBuffer = pxPrintBufferNew;
 
             xPrintBufferSize = xPrintBufferSize * 2;
         }
+#if defined(__freertos__)
         configASSERT ( xPrintBufferCount < xPrintBufferSize);
+#else
+        assert ( xPrintBufferCount < xPrintBufferSize);
+#endif
 
         /* populate BenchmarkSample_t struct and add to the print buffer */
         pxPrintBuffer[ xPrintBufferCount ].xBenchmark = xBenchmark;
@@ -127,6 +152,7 @@ void vPrintMicrobenchmarkSamples( void )
 {
     char *spare_string = "SPARE_PROCESSING_MICROBENCHMARK";
     char *request_string = "REQUEST_PROCESSING_MICROBENCHMARK";
+    char *max_string = "MAX_PROCESSING_MACROBENCHMARK";
     char *print_string;
 
     /* Print out column headings for the run-time stats table. */
@@ -149,7 +175,11 @@ void vPrintMicrobenchmarkSamples( void )
     }
 
     /* Reset the buffer. */
+#if defined(__freertos__)
     vPortFree(pxPrintBuffer);
+#else
+    free(pxPrintBuffer);
+#endif
     pxPrintBuffer = NULL;
 }
 

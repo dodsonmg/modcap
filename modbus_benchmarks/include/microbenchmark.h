@@ -25,8 +25,8 @@
  * 1 tab == 4 spaces!
  */
 
-#ifndef _MICROBENCHMARK_H_
-#define _MICROBENCHMARK_H_
+#ifndef _MODBUS_BENCHMARKS_H_
+#define _MODBUS_BENCHMARKS_H_
 
 /*-----------------------------------------------------------*/
 
@@ -35,18 +35,29 @@
 
 /*-----------------------------------------------------------*/
 
+/*
+ * SPARE_PREOCESSING: @ server. Measures spare time after processing a request.
+ * REQUEST_PROCESSING: @ server. Measures time to process a request.
+ * MAX_PROCESSING: @ client. Measures time for request/reply roundtrips.
+ */
 typedef enum _BenchmarkType_t {
     SPARE_PROCESSING,
-    REQUEST_PROCESSING
+    REQUEST_PROCESSING,
+    MAX_PROCESSING
 } BenchmarkType_t;
 
 /*-----------------------------------------------------------*/
 
+#if defined(__freertos__)
 void xMicrobenchmarkSample( BenchmarkType_t xBenchmark, char *pcFunctionName,
         uint64_t ulTimeDiff, BaseType_t xToPrint );
+#else
+void xMicrobenchmarkSample( BenchmarkType_t xBenchmark, char *pcFunctionName,
+        uint64_t ulTimeDiff, uint8_t xToPrint );
+#endif
 
 void vPrintMicrobenchmarkSamples(void);
 
 /*-----------------------------------------------------------*/
 
-#endif /* _MICROBENCHMARK_H_ */
+#endif /* _MODBUS_BENCHMARKS_H_ */

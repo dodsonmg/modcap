@@ -15,7 +15,7 @@
 
 #include "modbus_test_constants.h"
 
-#if defined(MICROBENCHMARK)
+#if defined(MODBUS_BENCHMARK)
 #include "microbenchmark.h"
 #endif
 
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
         printf("*** CLIENT ITERATION %d ***\r\n", i);
         printf("***************************\r\n");
 
-#if defined(MICROBENCHMARK)
+#if defined(MODBUS_BENCHMARK)
         /* Get timestamp before executing test_body(). */
         gettimeofday(&tv_start, NULL);
 #endif
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
         rc = test_body();
         ASSERT_TRUE(rc != -1, "");
 
-#if defined(MICROBENCHMARK)
+#if defined(MODBUS_BENCHMARK)
         /* Get timestamp after executing test_body(). */
         gettimeofday(&tv_end, NULL);
 
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
     printf("END_TEST\r\n");
     printf("--------\r\n");
 
-#if defined(MICROBENCHMARK)
+#if defined(MODBUS_BENCHMARK)
     vPrintMicrobenchmarkSamples();
 #endif
 
@@ -612,7 +612,7 @@ int test_body(void)
      * We don't include expected failures in microbenchmarking,
      * since the generally result in timeouts, which is both slow and
      * not really helpful in any way. */
-#if !defined(MICROBENCHMARK)
+#if !defined(MODBUS_BENCHMARK)
 #if defined(MODBUS_NETWORK_CAPS)
 	rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS,
 			0, tab_rp_registers);
@@ -621,7 +621,7 @@ int test_body(void)
 			0, tab_rp_registers);
 #endif /* defined(MODBUS_NETWORK_CAPS) */
     ASSERT_TRUE(rc == -1, "FAILED (nb_points %d)\r\n", rc);
-#endif /* !defined(MICROBENCHMARK) */
+#endif /* !defined(MODBUS_BENCHMARK) */
 
     /* WRITE_AND_READ_REGISTERS */
     printf("\r\nWRITE_AND_READ_REGISTERS\r\n");

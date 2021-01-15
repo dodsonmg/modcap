@@ -150,7 +150,7 @@ def build(bld):
                         'modbus',
                         'modbus_benchmarks',
                         ],
-                      defines=bld.env.DEFINES + ['MICROBENCHMARK=1'],
+                      defines=bld.env.DEFINES + ['MODBUS_BENCHMARK=1'],
                       target='modbus_test_client_bench')
 
         # build a modbus client to test a modbus server with network capabiliies
@@ -173,7 +173,7 @@ def build(bld):
                         ],
                       defines=bld.env.DEFINES + [
                         'MODBUS_NETWORK_CAPS=1',
-                        'MICROBENCHMARK=1'
+                        'MODBUS_BENCHMARK=1'
                         ],
                       target='modbus_test_client_network_caps_bench')
 

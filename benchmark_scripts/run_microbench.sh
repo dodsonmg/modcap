@@ -10,7 +10,7 @@ CLIENT_DIR=${HOME}/modcap
 ITERATIONS=2
 
 # number of runs to perform for each Modbus client run
-DISCARD_RUNS=5
+DISCARD_RUNS=10
 BENCHMARK_RUNS=20
 
 # set up the tap0 interface
@@ -31,7 +31,7 @@ fpga_reset () {
 fpga_run () {
     # we append to the file because it may get cleared between discarded
     # and saved runs
-    ${SSITH_DIR}/build/ssith_aws_fpga --tun tap0 --elf $1.elf >> $2
+    ${SSITH_DIR}/build/ssith_aws_fpga --tun tap0 --elf ${ELF_DIR}/$1.elf >> $2
 }
 
 # start a modbus client on the host
@@ -80,6 +80,8 @@ combined_run () {
 
     # run the modbus client on the host
     echo "Starting client for benchmark runs"
+    sync
+    free -m
     client_run ${2} ${BENCHMARK_RUNS}
 
     # sleep for a few seconds to let the server close its socket
@@ -98,21 +100,21 @@ fpga_kill () {
 
 # modbus server elfs that don't use network capabilities
 modbus_servers_no_network_caps=(
-    "modbus_nocheri_microbenchmark_10"
+    "modbus_nocheri_microbenchmark_20"
     "modbus_nocheri_microbenchmark_100"
-    "modbus_purecap_microbenchmark_10"
+    "modbus_purecap_microbenchmark_20"
     "modbus_purecap_microbenchmark_100"
-    "modbus_purecap_object_caps_microbenchmark_10"
+    "modbus_purecap_object_caps_microbenchmark_20"
     "modbus_purecap_object_caps_microbenchmark_100"
 )
 
 # modbus server elfs that *do* use network capabilities
 modbus_servers_network_caps=(
-    "modbus_nocheri_network_caps_microbenchmark_10"
+    "modbus_nocheri_network_caps_microbenchmark_20"
     "modbus_nocheri_network_caps_microbenchmark_100"
-    "modbus_purecap_network_caps_microbenchmark_10"
+    "modbus_purecap_network_caps_microbenchmark_20"
     "modbus_purecap_network_caps_microbenchmark_100"
-    "modbus_purecap_object_network_caps_microbenchmark_10"
+    "modbus_purecap_object_network_caps_microbenchmark_20"
     "modbus_purecap_object_network_caps_microbenchmark_100"
 )
 
@@ -131,14 +133,34 @@ while [ ${loop_iterations} -lt ${ITERATIONS} ]; do
     echo "*****************************"
 
     # execute modbus servers and clients without network capabilities
-    for modbus_server in "${modbus_servers_no_network_caps[@]}"; do
-        combined_run ${modbus_server} ${modbus_client_no_network_caps}
+    # go through them in normal and then reverse order
+    for (( idx=0 ; idx<${#modbus_servers_no_network_caps[@]} ; idx++ )) ; do
+        echo "Testing: ${modbus_servers_no_network_caps[idx]}"
+        combined_run ${modbus_servers_no_network_caps[idx]} ${modbus_client_no_network_caps}
+
+        sleep 5
+    done
+
+    for (( idx=${#modbus_servers_no_network_caps[@]}-1 ; idx>=0 ; idx-- )) ; do
+        echo "Testing: ${modbus_servers_no_network_caps[idx]}"
+        combined_run ${modbus_servers_no_network_caps[idx]} ${modbus_client_no_network_caps}
+
         sleep 5
     done
 
     # execute modbus servers and clients *with* network capabilities
-    for modbus_server in "${modbus_servers_network_caps[@]}"; do
-        combined_run ${modbus_server} ${modbus_client_network_caps}
+    # go through them in normal and then reverse order
+    for (( idx=0 ; idx<${#modbus_servers_network_caps[@]} ; idx++ )) ; do
+        echo "Testing: ${modbus_servers_network_caps[idx]}"
+        combined_run ${modbus_servers_network_caps[idx]} ${modbus_client_network_caps}
+
+        sleep 5
+    done
+
+    for (( idx=${#modbus_servers_network_caps[@]}-1 ; idx>=0 ; idx-- )) ; do
+        echo "Testing: ${modbus_servers_network_caps[idx]}"
+        combined_run ${modbus_servers_network_caps[idx]} ${modbus_client_network_caps}
+
         sleep 5
     done
 

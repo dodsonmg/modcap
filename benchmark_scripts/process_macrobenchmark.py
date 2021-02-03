@@ -7,7 +7,7 @@ import sys
 import getopt
 from scipy import stats
 from scipy.stats.mstats import gmean
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 import numpy as np
 
 # Constants
@@ -74,15 +74,15 @@ modbus_function_names = {
     'MODBUS_FC_READ_MULTIPLE_HOLDING_REGISTERS': 'read multiple holding registers',
     'MODBUS_FC_WRITE_SINGLE_REGISTER': 'write single holding register',
     'MODBUS_FC_WRITE_MULTIPLE_REGISTERS': 'write multiple holding registers',
-    
+
     'MODBUS_FC_WRITE_AND_READ_REGISTERS': 'write and read holding registers',
     'MODBUS_FC_MASK_WRITE_REGISTER': 'mask write holding register',
-    
+
     'MODBUS_FC_READ_INPUT_REGISTERS': 'read input register',
 
     'MODBUS_FC_READ_STRING': 'read string',
     'MODBUS_FC_WRITE_STRING': 'write string',
-    
+
     'MODBUS_FC_ALL': 'unit test'
 }
 
@@ -92,36 +92,36 @@ def main(argv):
     except getopt.GetoptError:
         print('modbus_macrobenchmark.py -d <input_dir>')
         sys.exit(2)
-    
+
     for opt, arg in opts:
         if opt == '-d':
             input_dir = Path(arg)
         else:
             print('modbus_macrobenchmark.py -d <inputdir>')
             sys.exit(2)
-    
+
     benchmark_data = extract_benchmark_data(input_dir, benchmark_names)
-    
+
     print()
-    print("Processing: base | base + CHERI | base + CHERI + obj")
-    print("0ms network latency")
+    print("Comparing:\tbase | base + CHERI | base + CHERI + obj")
+    print("Variant:\t0ms network latency")
     display_data(benchmark_type, benchmark_data, benchmark_names_no_network_caps_0ms)
-    
+
     print()
-    print("Processing: base | base + CHERI | base + CHERI + obj")
-    print("10 ms network latency")
+    print("Comparing:\tbase | base + CHERI | base + CHERI + obj")
+    print("Variant:\t10 ms network latency")
     display_data(benchmark_type, benchmark_data, benchmark_names_no_network_caps_10ms)
 
     print()
-    print("Processing: base + net | base + CHERI + net | base + CHERI + obj + net")
-    print("0ms network latency")
+    print("Comparing:\tbase + net | base + CHERI + net | base + CHERI + obj + net")
+    print("Variant:\t0ms network latency")
     display_data(benchmark_type, benchmark_data, benchmark_names_network_caps_0ms)
-    
+
     print()
-    print("Processing: base + net | base + CHERI + net | base + CHERI + obj + net")
-    print("0ms network latency")
+    print("Comparing:\tbase + net | base + CHERI + net | base + CHERI + obj + net")
+    print("Variant:\t0ms network latency")
     display_data(benchmark_type, benchmark_data, benchmark_names_network_caps_0ms)
-    
+
 
 def display_data(benchmark_type, benchmark_data, benchmark_names):
     '''
@@ -129,6 +129,10 @@ def display_data(benchmark_type, benchmark_data, benchmark_names):
     '''
     (gms, overheads) = get_gms_and_overheads(benchmark_type, benchmark_data,
                                              benchmark_names)
+    if gms is None:
+        print('\nNo data\n')
+        return
+
     print()
     print(gms['mean']/num_reqs)
     print()
@@ -148,11 +152,11 @@ def extract_benchmark_data(input_dir, benchmark_names):
         benchmark_data[benchmark_name] = pd.DataFrame()
         for benchmark_output_file in list(input_dir.glob(benchmark_name + '_*.txt')):
             print(benchmark_output_file.name)
-            df = benchmark_data[benchmark_name].append(benchmark_output_file_to_df(benchmark_output_file), ignore_index = True)       
+            df = benchmark_data[benchmark_name].append(benchmark_output_file_to_df(benchmark_output_file), ignore_index = True)
 
             # store the dataframe in the dict of benchmark data
             benchmark_data[benchmark_name] = df
-    
+
     return benchmark_data
 
 # Extract printed statistics from the output of each run
@@ -173,17 +177,17 @@ def benchmark_output_file_to_df(file):
 
         df = pd.read_csv(StringIO(csv))
         df['file'] = file.name
-        
+
         # drop rows with missing values
         df = df.dropna()
-        
+
         return df
-    
+
 
 def extract_function_time_diff(df, benchmark_type, modbus_function_name = "ALL"):
     '''
     Extract the 'time_diff' column for a given Modbus function
-    
+
     The time_diff could be time time to process a Modbus request (REQUEST_PROCESSING)
     or the spare processing time after processing the request (SPARE_PROCESSING)
 
@@ -200,18 +204,18 @@ def extract_function_time_diff(df, benchmark_type, modbus_function_name = "ALL")
     # if the df has both SPARE_PROCESSING and REQUEST_PROCESSING data
     if 'benchmark_type' in df.columns:
         df = df[df['benchmark_type'] == benchmark_type]
-    
+
     # extract the rows for the given function
     if modbus_function_name != "ALL":
         temp = df[df['modbus_function_name'] == modbus_function_name]
     else:
         temp = df
-    
+
     # extract the time_diff column
     temp = temp['time_diff']
-    
+
     entries_start = len(temp)
-    
+
     # we expect our data to be tight, and outliers are the result of initial data runs,
     # so we'll use IQR to remove these outliers (same alg as boxplot):
     # https://towardsdatascience.com/ways-to-detect-and-remove-the-outliers-404d16608dba
@@ -220,16 +224,16 @@ def extract_function_time_diff(df, benchmark_type, modbus_function_name = "ALL")
     IQR = Q3 - Q1
     outliers_low = temp < (Q1 - 1.5 * IQR)
     outliers_high = temp > (Q3 + 1.5 * IQR)
-    
+
     temp = temp[~(outliers_low | outliers_high)]
-    
+
     entries_end = len(temp)
     entries_removed = entries_start - entries_end
 
     # print a warning if > 20% are outliers
 #     if entries_removed > 0.2*entries_start:
 #         print("Removed {} of {} for {}".format(entries_removed, entries_start, modbus_function_name))
-        
+
     # assert that < 50% are outliers
     assert entries_removed < 0.5*entries_start, \
     "Removed {} of {} for {}".format(entries_removed, entries_start, modbus_function_name)
@@ -240,14 +244,14 @@ def extract_function_time_diff(df, benchmark_type, modbus_function_name = "ALL")
 def get_gms_and_overheads(benchmark_type, benchmark_data, benchmark_names):
     '''
     computes geometric means and overheads for all benchmarks against a baseline
-    
+
     params
     ------
     benchmark_type : string designating which benchmark to process
                    : assumes element 0 is the baseline benchmark
     benchmark_data : dict of dataframes with data from each benchmark run
     benchmark_names: string list of benchmark names to process
-    
+
     returns
     -------
     df : DataFrame of geometric means and overheads, indexed by benchmark name
@@ -260,9 +264,12 @@ def get_gms_and_overheads(benchmark_type, benchmark_data, benchmark_names):
     for benchmark_name in benchmark_names:
         gms[benchmark_name] = {}
         overheads[benchmark_name] = {}
-        
+
         df = benchmark_data[benchmark_name]
-        
+
+        if len(df) == 0:
+            return (None, None)
+
         for modbus_function_name in df.modbus_function_name.value_counts().index:
 #             print("Processing: {} in {}".format(modbus_function_name, benchmark_name))
             s = extract_function_time_diff(df, benchmark_type, modbus_function_name)
@@ -278,10 +285,10 @@ def get_gms_and_overheads(benchmark_type, benchmark_data, benchmark_names):
 
     gms_df = pd.DataFrame(gms).transpose()
     gms_df['mean'] = gms_df.mean(axis = 1)
-    
+
     overheads_df = pd.DataFrame(overheads).transpose()
     overheads_df['mean'] = overheads_df.mean(axis = 1)
-            
+
     return (gms_df, overheads_df)
 
 if __name__ == "__main__":

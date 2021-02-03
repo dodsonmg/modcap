@@ -44,9 +44,7 @@ int convert_string_req(const char *req_string, uint8_t *req);
     printf("\r\nLine %d: assertion error for '%s': " _format "\r\n", __LINE__, # _cond, ## _args)
 
 #define ASSERT_TRUE(_cond, _format, __args...) {  \
-    if (_cond) {                                  \
-        printf("OK\r\n");                           \
-    } else {                                      \
+    if (!_cond) {                                  \
         BUG_REPORT(_cond, _format, ## __args);    \
         goto close;                               \
     }                                             \
@@ -70,6 +68,7 @@ int main(int argc, char *argv[])
 {
     int rc;
     int num_iters;
+    int num_iters_inner = 10;
     struct timeval tv_start, tv_end;
     uint64_t time_diff;
 
@@ -97,7 +96,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Unable to allocate libmodbus context\r\n");
         return -1;
     }
-    modbus_set_debug(ctx, TRUE);
+    modbus_set_debug(ctx, FALSE);
     modbus_set_error_recovery(ctx,
                               MODBUS_ERROR_RECOVERY_LINK |
                               MODBUS_ERROR_RECOVERY_PROTOCOL);
@@ -141,41 +140,49 @@ int main(int argc, char *argv[])
     ASSERT_TRUE(rc != -1, "");
 #endif
 
+#if !defined(MODBUS_BENCHMARK)
     printf("----------\r\n");
     printf("BEGIN_TEST\r\n");
     printf("----------\r\n");
-
+#endif
 
     /* Execute a series of requests to the Modbus server
      * and validate the replies. */
     for(int i = 0; i < num_iters; ++i) {
-        printf("***************************\r\n");
-        printf("*** CLIENT ITERATION %d ***\r\n", i);
-        printf("***************************\r\n");
 
-#if defined(MODBUS_BENCHMARK)
         /* Get timestamp before executing test_body(). */
         gettimeofday(&tv_start, NULL);
+
+        for(int j = 0; j < num_iters_inner; ++j) {
+#if defined(MODBUS_NETWORK_CAPS)
+            rc = modbus_write_bit_network_caps(ctx, UT_BITS_ADDRESS, ON);
+#else
+            rc = modbus_write_bit(ctx, UT_BITS_ADDRESS, ON);
 #endif
+            /* Swap this for the call above to test all modbus functions */
+            /* rc = test_body(); */
+            ASSERT_TRUE(rc != -1, "");
+        }
 
-        rc = test_body();
-        ASSERT_TRUE(rc != -1, "");
-
-#if defined(MODBUS_BENCHMARK)
         /* Get timestamp after executing test_body(). */
         gettimeofday(&tv_end, NULL);
 
+#if defined(MODBUS_BENCHMARK)
         /* Get the timestamp difference in usec and store as
-         * a benchmark sample. */
+         * a benchmark sample.
+         * We divide by num_iters_inner to get an average per-call
+         * time from the aggregate. */
         time_diff = 1e6 * (tv_end.tv_sec - tv_start.tv_sec) +
             (tv_end.tv_usec - tv_start.tv_usec);
-        xMicrobenchmarkSample(MAX_PROCESSING, "MODBUS_FC_ALL", time_diff, 1);
+        xMicrobenchmarkSample(MAX_PROCESSING, "MODBUS_FC_ALL", time_diff/num_iters_inner, 1);
 #endif
     }
 
+#if !defined(MODBUS_BENCHMARK)
     printf("--------\r\n");
     printf("END_TEST\r\n");
     printf("--------\r\n");
+#endif
 
 #if defined(MODBUS_BENCHMARK)
     vPrintMicrobenchmarkSamples();

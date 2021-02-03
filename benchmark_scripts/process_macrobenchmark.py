@@ -18,7 +18,7 @@ this_dir = Path().absolute()
 benchmark_type = 'MAX_PROCESSING_MACROBENCHMARK'
 
 # number of requests made by the client to server during the macrobenchmark
-num_reqs = 16;
+num_reqs = 1;
 
 # names of benchmark applications
 benchmark_names = [
@@ -119,8 +119,8 @@ def main(argv):
 
     print()
     print("Comparing:\tbase + net | base + CHERI + net | base + CHERI + obj + net")
-    print("Variant:\t0ms network latency")
-    display_data(benchmark_type, benchmark_data, benchmark_names_network_caps_0ms)
+    print("Variant:\t10ms network latency")
+    display_data(benchmark_type, benchmark_data, benchmark_names_network_caps_10ms)
 
 
 def display_data(benchmark_type, benchmark_data, benchmark_names):
@@ -231,8 +231,8 @@ def extract_function_time_diff(df, benchmark_type, modbus_function_name = "ALL")
     entries_removed = entries_start - entries_end
 
     # print a warning if > 20% are outliers
-#     if entries_removed > 0.2*entries_start:
-#         print("Removed {} of {} for {}".format(entries_removed, entries_start, modbus_function_name))
+    if entries_removed > 0.2*entries_start:
+        print("Removed {} of {} for {}".format(entries_removed, entries_start, modbus_function_name))
 
     # assert that < 50% are outliers
     assert entries_removed < 0.5*entries_start, \
@@ -271,7 +271,7 @@ def get_gms_and_overheads(benchmark_type, benchmark_data, benchmark_names):
             return (None, None)
 
         for modbus_function_name in df.modbus_function_name.value_counts().index:
-#             print("Processing: {} in {}".format(modbus_function_name, benchmark_name))
+            print("Processing: {} in {}".format(modbus_function_name, benchmark_name))
             s = extract_function_time_diff(df, benchmark_type, modbus_function_name)
 
             gm = gmean(s)

@@ -165,10 +165,11 @@ def benchmark_output_file_to_df(file):
             if line.startswith('REQUEST_PROCESSING_MICROBENCHMARK') or \
             line.startswith('SPARE_PROCESSING_MICROBENCHMARK') or \
             line.startswith('MAX_PROCESSING_MACROBENCHMARK') or \
-            line.startswith('benchmark_type') or \
-            line.startswith('MODBUS_FC') or \
-            line.startswith('modbus_function_name'):
+            line.startswith('benchmark_type'):
                 csv += line.replace(', ', ',') # remove any spaces after commas in the csv
+
+        if len(csv) == 0:
+            return None
 
         df = pd.read_csv(StringIO(csv))
         df['file'] = file.name

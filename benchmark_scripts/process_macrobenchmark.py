@@ -175,6 +175,9 @@ def benchmark_output_file_to_df(file):
             line.startswith('modbus_function_name'):
                 csv += line.replace(', ', ',') # remove any spaces after commas in the csv
 
+        if len(csv) == 0:
+            return None
+
         df = pd.read_csv(StringIO(csv))
         df['file'] = file.name
 

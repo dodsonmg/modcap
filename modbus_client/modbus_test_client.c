@@ -44,7 +44,8 @@ int convert_string_req(const char *req_string, uint8_t *req);
     printf("\r\nLine %d: assertion error for '%s': " _format "\r\n", __LINE__, # _cond, ## _args)
 
 #define ASSERT_TRUE(_cond, _format, __args...) {  \
-    if (!_cond) {                                  \
+    if (_cond) {                                  \
+    } else {                                      \
         BUG_REPORT(_cond, _format, ## __args);    \
         goto close;                               \
     }                                             \

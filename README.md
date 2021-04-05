@@ -1,4 +1,4 @@
-# `modcap` -- distributed capabilities for the Modbus protocol
+# `modcap` - distributed capabilities for the Modbus protocol
 
 The `modcap' library is a proof of concept for composing hardware-enforced
 architectural capabilities, software-definded object capabilities, and
@@ -73,13 +73,23 @@ Building Modbus server demo on FreeRTOS is most easily accomplished using the
 `modbus_server` branch of `cheribuild` [10].
 
 [0] [Saltzer and Schroeder, ‘The Protection of Information in Computer Systems’.](https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=1451869)
+
 [1] [Miller, Yee, and Shapiro, ‘Capability Myths Demolished’.](https://srl.cs.jhu.edu/pubs/SRL2003-02.pdf)
+
 [2] [Watson et al., ‘An Introduction to CHERI’.](https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-941.pdf)
+
 [3] [Birgisson et al., ‘Macaroons’.](https://www.ndss-symposium.org/ndss2014/programme/macaroons-cookies-contextual-caveats-decentralized-authorization-cloud/)
+
 [4] [Dodson et al., ‘CHERI Macaroons: Efficient, Host-Based Access Control for Cyber-Physical Systems’.](https://doi.org/10.17863/CAM.54214)
+
 [5] [https://github.com/stephane/libmodbus](https://github.com/stephane/libmodbus)
+
 [6] [https://www.freertos.org/](https://www.freertos.org/)
+
 [7] [https://github.com/rescrv/libmacaroons](https://github.com/rescrv/libmacaroons)
+
 [8] [https://github.com/CTSRD-CHERI/cheribuild](https://github.com/CTSRD-CHERI/cheribuild)
+
 [9] [https://github.com/CTSRD-CHERI/FreeRTOS-Demos-CHERI-RISC-V/tree/modbus_server](https://github.com/CTSRD-CHERI/FreeRTOS-Demos-CHERI-RISC-V/tree/modbus_server)
+
 [10] [https://github.com/CTSRD-CHERI/cheribuild/tree/modbus_server](https://github.com/CTSRD-CHERI/cheribuild/tree/modbus_server)

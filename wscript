@@ -79,13 +79,47 @@ def configure(ctx):
         ctx.path.abspath() + '/modbus_benchmarks/include/',
     ])
 
-    # Additional library dependencies if we're targeting freertos
+    # Additional library dependencies and includes if we're targeting freertos
     if ctx.env.TARGET == 'freertos':
         ctx.env.append_value('LIB_DEPS', ['freertos_tcpip', 'virtio'])
+
+        if ctx.env.ENDPOINT == 'server':
+            ctx.env.append_value('INCLUDES', [
+                ctx.path.abspath() + '/modbus_server/include/',
+            ])
+
+    # Generic defines
+    ctx.define('configCOMPARTMENTS_NUM', 1024)
+    ctx.define('configMAXLEN_COMPNAME', 255)
+
+    # Modbus defines
+    if ctx.env.MODBUS_MICROBENCHMARK:
+        ctx.define('MODBUS_MICROBENCHMARK', 1)
+        ctx.define('NDEBUG', 1)
+
+    if ctx.env.MODBUS_MACROBENCHMARK:
+        ctx.define('MODBUS_MACROBENCHMARK', 1)
+        ctx.define('NDEBUG', 1)
+
+    if ctx.env.MODBUS_EXEC_PERIOD:
+        ctx.define('modbusEXEC_PERIOD_MS', int(ctx.env.MODBUS_EXEC_PERIOD))
+
+    if ctx.env.MODBUS_NETWORK_DELAY:
+        ctx.define('modbusNETWORK_DELAY_MS', int(ctx.env.MODBUS_NETWORK_DELAY))
+
+    if ctx.env.MODBUS_OBJECT_CAPS:
+        ctx.define('MODBUS_OBJECT_CAPS', 1)
+
+    if ctx.env.MODBUS_OBJECT_CAPS_STUBS:
+        ctx.define('MODBUS_OBJECT_CAPS_STUBS', 1)
+
+    if ctx.env.MODBUS_NETWORK_CAPS:
+        ctx.define('MODBUS_NETWORK_CAPS', 1)
 
 def build(bld):
     print("Building modcap")
 
+    MODBUS_SERVER_DIR = 'modbus_server/'
     MODBUS_CLIENT_DIR = 'modbus_client/'
     LIBMACAROONS_DIR = 'libmacaroons/'
     LIBMODBUS_DIR = 'libmodbus/'
@@ -178,6 +212,11 @@ def build(bld):
                       target='modbus_test_client_network_caps_bench')
 
     if bld.env.TARGET == 'freertos' and bld.env.ENDPOINT == 'server':
+        cflags = []
+
+        if bld.env.COMPARTMENTALIZE:
+            cflags = ['-cheri-cap-table-abi=gprel']
+
         bld.stlib(features=['c'],
                   source=[
                       LIBMODBUS_DIR + 'src/modbus.c',
@@ -242,3 +281,17 @@ def build(bld):
                       "freertos_tcpip",
                   ],
                   target="modbus_benchmarks")
+
+        bld.stlib(
+            features=['c'],
+            cflags = bld.env.CFLAGS + cflags,
+            source=[
+                MODBUS_SERVER_DIR + 'src/main_modbus.c',
+                MODBUS_SERVER_DIR + 'src/ModbusServer.c',
+            ],
+            use=[
+                "freertos_core_headers", "freertos_bsp_headers", "freertos_tcpip_headers",
+                "freertos_libdl_headers", "virtio_headers", "cheri_headers", "modbus",
+                "modbus_object_caps", "modbus_network_caps", "modbus_benchmarks", "virtio"
+            ],
+            target="main_modbus")

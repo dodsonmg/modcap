@@ -127,7 +127,7 @@ def display_data(benchmark_type, benchmark_data, benchmark_names):
     '''
     This is a display wrapper for get_gms_and_overheads
     '''
-    (gms, overheads) = get_gms_and_overheads(benchmark_type, benchmark_data,
+    (gms, sds, overheads) = get_gms_and_overheads(benchmark_type, benchmark_data,
                                              benchmark_names)
     if gms is None:
         print('\nNo data\n')
@@ -135,6 +135,8 @@ def display_data(benchmark_type, benchmark_data, benchmark_names):
 
     print()
     print(gms['mean']/num_reqs)
+    print()
+    print(sds['mean'])
     print()
     print(overheads['mean'])
 
@@ -261,38 +263,45 @@ def get_gms_and_overheads(benchmark_type, benchmark_data, benchmark_names):
     '''
     # dicts to store geometric means and overheads for each benchmark
     gms = {}
+    sds = {}
     overheads = {}
 
     # iterate through each benchmark and store the gm
     for benchmark_name in benchmark_names:
         gms[benchmark_name] = {}
+        sds[benchmark_name] = {}
         overheads[benchmark_name] = {}
 
         df = benchmark_data[benchmark_name]
 
         if len(df) == 0:
-            return (None, None)
+            return (None, None, None)
 
         for modbus_function_name in df.modbus_function_name.value_counts().index:
             print("Processing: {} in {}".format(modbus_function_name, benchmark_name))
             s = extract_function_time_diff(df, benchmark_type, modbus_function_name)
 
             gm = gmean(s)
+            sd = s.std()
             if benchmark_name == benchmark_names[0]:
                 overhead = 0
             else:
                 baseline_gm = gms[benchmark_names[0]][modbus_function_name]
                 overhead = ((gm - baseline_gm) / baseline_gm) * 100
             gms[benchmark_name][modbus_function_name] = gm
+            sds[benchmark_name][modbus_function_name] = sd
             overheads[benchmark_name][modbus_function_name] = overhead
 
     gms_df = pd.DataFrame(gms).transpose()
     gms_df['mean'] = gms_df.mean(axis = 1)
 
+    sds_df = pd.DataFrame(sds).transpose()
+    sds_df['mean'] = sds_df.mean(axis = 1)
+
     overheads_df = pd.DataFrame(overheads).transpose()
     overheads_df['mean'] = overheads_df.mean(axis = 1)
 
-    return (gms_df, overheads_df)
+    return (gms_df, sds_df, overheads_df)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

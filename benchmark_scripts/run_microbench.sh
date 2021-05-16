@@ -100,22 +100,22 @@ fpga_kill () {
 
 # modbus server elfs that don't use network capabilities
 modbus_servers_no_network_caps=(
-    "modbus_nocheri_microbenchmark_20"
-    "modbus_nocheri_microbenchmark_100"
-    "modbus_purecap_microbenchmark_20"
-    "modbus_purecap_microbenchmark_100"
-    "modbus_purecap_object_caps_microbenchmark_20"
-    "modbus_purecap_object_caps_microbenchmark_100"
+    "main_modbus_nocheri_microbenchmark_20"
+    "main_modbus_nocheri_microbenchmark_100"
+    "main_modbus_purecap_microbenchmark_20"
+    "main_modbus_purecap_microbenchmark_100"
+    "main_modbus_purecap_object_caps_microbenchmark_20"
+    "main_modbus_purecap_object_caps_microbenchmark_100"
 )
 
 # modbus server elfs that *do* use network capabilities
 modbus_servers_network_caps=(
-    "modbus_nocheri_network_caps_microbenchmark_20"
-    "modbus_nocheri_network_caps_microbenchmark_100"
-    "modbus_purecap_network_caps_microbenchmark_20"
-    "modbus_purecap_network_caps_microbenchmark_100"
-    "modbus_purecap_object_network_caps_microbenchmark_20"
-    "modbus_purecap_object_network_caps_microbenchmark_100"
+    "main_modbus_nocheri_network_caps_microbenchmark_20"
+    "main_modbus_nocheri_network_caps_microbenchmark_100"
+    "main_modbus_purecap_network_caps_microbenchmark_20"
+    "main_modbus_purecap_network_caps_microbenchmark_100"
+    "main_modbus_purecap_object_network_caps_microbenchmark_20"
+    "main_modbus_purecap_object_network_caps_microbenchmark_100"
 )
 
 # modbus client executable to communicate without network capabilities

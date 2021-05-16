@@ -28,9 +28,9 @@ FREERTOS_TARGET=freertos-baremetal-riscv64
 COMPILER_RT_TARGET=compiler-rt-builtins-baremetal-riscv64
 CP_BIN_DIR=./bin
 EXEC_PERIOD=(100)
-NETWORK_DELAY=(10)
 # EXEC_PERIOD=(20 100)
-# NETWORK_DELAY=(0 10)
+# NETWORK_DELAY=(10)
+NETWORK_DELAY=(0 10)
 
 if [[ $# != 3 ]]; then
     echo "usage: $0.sh <nocheri | purecap> <qemu_virt | fett> <prog>"

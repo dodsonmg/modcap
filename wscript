@@ -66,6 +66,8 @@ def configure_modbus_options(ctx):
                ctx.env.MODBUS_OBJECT_CAPS = 1
           if "objstubs" in option:
                ctx.env.MODBUS_OBJECT_CAPS_STUBS = 1
+          if "net" in option:
+               ctx.env.MODBUS_NETWORK_CAPS = 1
           if "execperiod" in option:
                ctx.env.MODBUS_EXEC_PERIOD = option.split('_')[1]
           if "netdelay" in option:

@@ -118,6 +118,10 @@ def configure(ctx):
         # Configure modbus options
         configure_modbus_options(ctx)
 
+        ctx.env.append_value('DEFINES', [
+            'configPROG_ENTRY                   = main_modbus',
+        ])
+
         ctx.env.append_value('LIB_DEPS', ['freertos_tcpip', 'virtio'])
 
         if ctx.env.ENDPOINT == 'server':

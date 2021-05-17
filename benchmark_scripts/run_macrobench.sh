@@ -100,22 +100,22 @@ fpga_kill () {
 
 # modbus server elfs that don't use network capabilities
 modbus_servers_no_network_caps=(
-    "RISC-V-Generic_main_modbus-nocheri-macro-networkdelay_0"
-    # "RISC-V-Generic_main_modbus-nocheri-macro-networkdelay_10"
-    "RISC-V-Generic_main_modbus-purecap-macro-networkdelay_0"
-    # "RISC-V-Generic_main_modbus-purecap-macro-networkdelay_10"
-    "RISC-V-Generic_main_modbus-purecap-obj-macro-networkdelay_0"
-    # "RISC-V-Generic_main_modbus-purecap-obj-macro-networkdelay_10"
+    "RISC-V-Generic_main_modbus-nocheri-macro-netdelay_0"
+    # "RISC-V-Generic_main_modbus-nocheri-macro-netdelay_10"
+    "RISC-V-Generic_main_modbus-purecap-macro-netdelay_0"
+    # "RISC-V-Generic_main_modbus-purecap-macro-netdelay_10"
+    "RISC-V-Generic_main_modbus-purecap-obj-macro-netdelay_0"
+    # "RISC-V-Generic_main_modbus-purecap-obj-macro-netdelay_10"
 )
 
 # modbus server elfs that *do* use network capabilities
 modbus_servers_network_caps=(
-    # "RISC-V-Generic_main_modbus-nocheri-net-macro-networkdelay_0"
-    # "RISC-V-Generic_main_modbus-nocheri-net-macro-networkdelay_10"
-    # "RISC-V-Generic_main_modbus-purecap-net-macro-networkdelay_0"
-    # "RISC-V-Generic_main_modbus-purecap-net-macro-networkdelay_10"
-    # "RISC-V-Generic_main_modbus-purecap-obj-net-macro-networkdelay_0"
-    # "RISC-V-Generic_main_modbus-purecap-obj-net-macro-networkdelay_10"
+    # "RISC-V-Generic_main_modbus-nocheri-net-macro-netdelay_0"
+    # "RISC-V-Generic_main_modbus-nocheri-net-macro-netdelay_10"
+    # "RISC-V-Generic_main_modbus-purecap-net-macro-netdelay_0"
+    # "RISC-V-Generic_main_modbus-purecap-net-macro-netdelay_10"
+    # "RISC-V-Generic_main_modbus-purecap-obj-net-macro-netdelay_0"
+    # "RISC-V-Generic_main_modbus-purecap-obj-net-macro-netdelay_10"
 )
 
 # modbus client executable to communicate without network capabilities

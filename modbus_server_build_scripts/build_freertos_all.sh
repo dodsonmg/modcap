@@ -15,10 +15,10 @@ CHERIBUILD_DIR=$HOME/cheribuild
 CHERI_OUTPUT_DIR=$HOME/cheri/output
 FREERTOS_TARGET=freertos-baremetal-riscv64
 COMPILER_RT_TARGET=compiler-rt-builtins-baremetal-riscv64
-EXEC_PERIOD=(100)
-# EXEC_PERIOD=(20 100)
-NETWORK_DELAY=(0)
-# NETWORK_DELAY=(0 10)
+# EXEC_PERIOD=(100)
+EXEC_PERIOD=(20 100)
+# NETWORK_DELAY=(0)
+NETWORK_DELAY=(0 10)
 
 if [[ $# != 2 ]]; then
     echo "usage: $0.sh <nocheri | purecap> <qemu_virt | fett>"

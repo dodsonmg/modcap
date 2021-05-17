@@ -7,11 +7,11 @@ SSITH_DIR=${HOME}/ssith-aws-fpga
 CLIENT_DIR=${HOME}/modcap
 
 # number of times to loop through all Modbus clients
-ITERATIONS=2
+ITERATIONS=1
 
 # number of runs to perform for each Modbus client run
-DISCARD_RUNS=10
-BENCHMARK_RUNS=20
+DISCARD_RUNS=1
+BENCHMARK_RUNS=1
 
 # set up the tap0 interface
 sudo ifup tap0
@@ -100,22 +100,22 @@ fpga_kill () {
 
 # modbus server elfs that don't use network capabilities
 modbus_servers_no_network_caps=(
-    "main_modbus_nocheri_microbenchmark_20"
-    "main_modbus_nocheri_microbenchmark_100"
-    "main_modbus_purecap_microbenchmark_20"
-    "main_modbus_purecap_microbenchmark_100"
-    "main_modbus_purecap_object_caps_microbenchmark_20"
-    "main_modbus_purecap_object_caps_microbenchmark_100"
+    "RISC-V-Generic_main_modbus-nocheri-micro-execperiod_100"
+    # "RISC-V-Generic_main_modbus-nocheri-micro-execperiod_20"
+    "RISC-V-Generic_main_modbus-purecap-micro-execperiod_100"
+    # "RISC-V-Generic_main_modbus-purecap-micro-execperiod_20"
+    "RISC-V-Generic_main_modbus-purecap-obj-micro-execperiod_100"
+    # "RISC-V-Generic_main_modbus-purecap-obj-micro-execperiod_20"
 )
 
 # modbus server elfs that *do* use network capabilities
 modbus_servers_network_caps=(
-    "main_modbus_nocheri_network_caps_microbenchmark_20"
-    "main_modbus_nocheri_network_caps_microbenchmark_100"
-    "main_modbus_purecap_network_caps_microbenchmark_20"
-    "main_modbus_purecap_network_caps_microbenchmark_100"
-    "main_modbus_purecap_object_network_caps_microbenchmark_20"
-    "main_modbus_purecap_object_network_caps_microbenchmark_100"
+    "RISC-V-Generic_main_modbus-nocheri-net-micro-execperiod_100"
+    # "RISC-V-Generic_main_modbus-nocheri-net-micro-execperiod_20"
+    "RISC-V-Generic_main_modbus-purecap-net-micro-execperiod_100"
+    # "RISC-V-Generic_main_modbus-purecap-net-micro-execperiod_20"
+    "RISC-V-Generic_main_modbus-purecap-obj-net-micro-execperiod_100"
+    # "RISC-V-Generic_main_modbus-purecap-obj-net-micro-execperiod_20"
 )
 
 # modbus client executable to communicate without network capabilities

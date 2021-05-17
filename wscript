@@ -38,6 +38,39 @@ def options(ctx):
                     default='server',
                     help='Build a Modbus client or server (supported: client/server, default: server)')
 
+def configure_modbus_options(ctx):
+    modbus_options = ["macro",       # Compile FreeRTOS Modbus server for microbenchmarking and set execution period
+                      "micro",       # Compile FreeRTOS Modbus server for macrobenchmarking and set simulated network delay (default = 0)
+                      "net",         # Compile FreeRTOS Modbus server to use network capabilities
+                      "obj",         # Compile FreeRTOS Modbus server to use local object capabilities
+                      "objstubs",    # Compile FreeRTOS Modbus server to call into, but not use, the local object capabilities layer.  Used to measure cost of the object capabilities shim layer.
+                      "execperiod",  # The execution period for the Modbus server in milliseconds (default = 0)
+                      "netdelay",    # The simulated network delay for the Modbus server in milliseconds (default = 0)
+                      ]
+
+    ctx.env.MODBUS_MACROBENCHMARK = 0
+    ctx.env.MODBUS_MICROBENCHMARK = 0
+    ctx.env.MODBUS_EXEC_PERIOD = 0
+    ctx.env.MODBUS_NETWORK_DELAY = 0
+
+    demo = ctx.env.PROG
+    demo_options = demo.split('-')
+
+    for option in demo_options:
+      if any(option in opt for opt in modbus_options):
+          if "macro" in option:
+              ctx.env.MODBUS_MACROBENCHMARK = 1
+          if "micro" in option:
+               ctx.env.MODBUS_MICROBENCHMARK = 1
+          if "obj" in option:
+               ctx.env.MODBUS_OBJECT_CAPS = 1
+          if "objstubs" in option:
+               ctx.env.MODBUS_OBJECT_CAPS_STUBS = 1
+          if "execperiod" in option:
+               ctx.env.MODBUS_EXEC_PERIOD = option.split('_')[1]
+          if "netdelay" in option:
+               ctx.env.MODBUS_NETWORK_DELAY = option.split('_')[1]
+
 def configure(ctx):
     print("Configuring modcap @", ctx.path.abspath())
 
@@ -81,6 +114,10 @@ def configure(ctx):
 
     # Additional library dependencies and includes if we're targeting freertos
     if ctx.env.TARGET == 'freertos':
+
+        # Configure modbus options
+        configure_modbus_options(ctx)
+
         ctx.env.append_value('LIB_DEPS', ['freertos_tcpip', 'virtio'])
 
         if ctx.env.ENDPOINT == 'server':
@@ -294,4 +331,4 @@ def build(bld):
                 "freertos_libdl_headers", "virtio_headers", "cheri_headers", "modbus",
                 "modbus_object_caps", "modbus_network_caps", "modbus_benchmarks", "virtio"
             ],
-            target="main_modbus")
+            target=bld.env.PROG)
